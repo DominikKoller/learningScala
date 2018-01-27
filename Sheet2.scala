@@ -1,6 +1,6 @@
 import org.scalatest._
 import scala.collection.mutable.ListBuffer
-// built.sbt adds scalatest for this file only
+// built.sbt adds scalatest for specific files only
 
 object Sheet2 extends App {
   //Q1
