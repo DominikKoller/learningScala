@@ -31,7 +31,33 @@ object Sheet2 extends App {
 
   // Q3 in class Sheet2Tests below
 
-  // TODO Question 4
+  // Q4
+
+  // I do not quite understand this question, as floating point precision depends on the magnitude of the represented number.
+  // I will ignore this fact.
+
+  // in the worst-case, timeStep = timeEnd/numSteps - E, where E lim-> ε
+  // hence the body of the loop may be executed
+  // timeEnd / (timeEnd/numSteps - E)
+  // times
+  // especially, if timeEnd/numSteps - E <= 0, the loop will never finish
+
+  //b) time might be greater than timeEnd by any value below ε
+
+  // make the variable counting up in the loop be an integer, like so:
+
+  // val i = 0
+  // var time = 0.0
+  // while(i < numSteps)
+  //   {
+  //     ///...
+  //     time = timeEnd/i // in case you need it
+  //     // Inv: 0<=i<=numSteps and time = timeEnd/i
+  //     i+=1
+  //   }
+
+  // now time might be off by the same amount, may be greater than timeEnd by any value below ε
+  // but the important part is that the loop will run exactly numSteps times
 
   // Q5 in class Sheet2Tests below
 
@@ -104,7 +130,6 @@ object Sheet2 extends App {
   }
 
   //Q9
-  // TODO invariant, variant
   // println(questionNine(2)) // 0
   // println(questionNine(2.99)) // 0
   // println(questionNine(3)) // 1
@@ -119,15 +144,18 @@ object Sheet2 extends App {
 
     var y = 0
     var acc = 1
+
+    // I: acc = 3^y, acc <= x*3
     while(acc <= x){
       y+=1
       acc*=3
     }
+    // Post: acc = 3^y, x < acc <= x*3
+    // => y = floor(log3(x)+1)
     y-1
   }
 
   // Q10
-  // TODO Invariant, variant
   println(eval(Array(2, 2), 2)) // 2 + 2*2 = 6
   // 6.0
   println(eval(Array(2, 4, 3), 2)) // 2 + 4*2 + 3*4 = 22
@@ -135,10 +163,16 @@ object Sheet2 extends App {
   def eval(a: Array[Double], x: Double): Double = {
     var lastX: Double = 1
     var sum: Double = 0
+
+    // I: sum = value of the first i terms in the polynomial
+    //    lastX = x^i
+    // V: a.size - i
     for(i <- 0 until a.size) {
       sum += a(i)*lastX
       lastX *= x
     }
+    // Post: sum = values of all n terms in the polynomial
+    // lastX = x^n
     sum
   }
 }
