@@ -1,42 +1,56 @@
 // A class of objects to represent a set
 object IntSetApp extends App {
   println("IntSet")
-  var set = Set(2, 3, 4)
-  println(set)
-  println("size: "+ set.size)
+  var set1 = Set(2, 3, 4)
+  var set2 = Set(4, 2, 3)
+  println("Set1: " + set1)
+  println("Set2: " + set1)
+  println("size set 1: "+ set1.size)
+  println(set1.subsetOf(set2))
+  println(set1.subsetOf(Set(8,3,6,1)))
+
 }
-// TODO Invariants, Class Abstraction, justification for decisions
 
-class Set[A]{
-
-  // The following lines just define some aliases, so we can subsequently
-  // write "Node" rather than "IntSet.Node".
+case class Set[A](){
   // TODO Ask why the private class is defined in the companion object
-  private type Node[A] = Set.Node[A]
-  // Constructor
-  // TODO understand. What?
-  // private def IntList(datum: Int, next: IntList) = new IntSet.LinkedList(datum, next)
+  // Which I changed
 
-  // private secondary constructor
-  private def this(root: Set.Node[A]) = {
-    this()
-    this.root = root
-  }
   // State: S : P(Int) (where "P" represents power set)
-
   // Init: S = {}
-  private var root: Node[A] = null // emptyset
+  // Abstraction function:
+  // State: S = {x | x <- [head.next, head.next.next, ... , null)
+
+  // Datatype invariant:
+  // head = Node(null.instanceOf[A], x) where x = null or x element of S
+
+  // reason to use dummy header node:
+  // it is convenient to have a findPrev function
+  // in which case it is inconvenient to have null as the empty set
+  private val head: Node = Node(null.asInstanceOf[A], null) // emptyset
+  // TODO ask when I can use _ and when I should use null
 
   private def foreach(f: A=>Unit): Unit = {
-    var iterator: Node[A] = root
+    var i: Node = head.next
 
-    while(iterator!=null) {
-      f(iterator.datum)
-      iterator=iterator.next
+    while(i!=null) {
+      f(i.datum)
+      i=i.next
     }
   }
 
+  // Using findPrev to find the node before some condition holds,
+  // since this makes removing elements much easier
+  private def findPrev(e: A): Node = findPrev(i => i == e)
+
+  private def findPrev(p: A=>Boolean): Node = {
+    var i = head
+    while(i.next != null && !p(i.next.datum))
+      i = i.next
+    i
+  }
+
   // Convert the set to a string.
+  // Post: S = S0
   override def toString : String = {
     var result = "{"
 
@@ -51,15 +65,22 @@ class Set[A]{
   }
 
   /** Add element e to the set
-    * Post: S = S_0 U {e} */
-  def add(e: A) = {
-    if(!contains(e))
-      root = new Node(e, root)
+    * Post: S = S_0 U {e}
+    * returns e not element of S_0*/
+  def add(e: A): Boolean = {
+    if(!contains(e)) {
+      unsafeAdd(e)
+      true
+    }
+    else
+      false
   }
 
   // Adding without checking for doubles
-  private def unsafeAdd(e: A) = {
-    root = new Node(e, root)
+  // Pre: e not element of S
+  // Post: S = S_0 U {e}
+  private def unsafeAdd(e: A): Unit = {
+    head.next = Node(e, head.next)
   }
 
   /** Length of the list
@@ -73,25 +94,29 @@ class Set[A]{
   /** Does the set contain e?
     * Post: S = S_0 && returns (e in S) */
   def contains(e: A) : Boolean = {
-    var found = false
-    // TODO breakable
-    foreach(i => found = found || i==e)
-    found
+    val prev = findPrev(e)
+    prev.next != null
   }
 
   /** Return any member of the set.  (This is comparable to the operation
     * "head" on scala.collection.mutable.Set, but we'll use a name that does
     * not suggest a particular order.)
-    * Pre: S != {}
-    * Post: S = S_0 && returns e s.t. e in S */
+    * Changed conditions to use Option type:
+    * Pre: no preconditions
+    * Post: S = S_0 &&
+    * if S == {} returns None
+    * Else returns Some(e) s.t. e in S */
   def any : Option[A] = {
-    if(root != null)
-      Some(root.datum)
+    if(head.next != null)
+      Some(head.next.datum)
     else None
   }
 
   /** Does this equal that?
     * Post: S = S_0 && returns that.S = S */
+  // There is probably a faster implementation of this
+  // also: this fails to check whether the generic types match!
+  // TODO find out how to fix this
   override def equals(that: Any) : Boolean = that match {
     case s: Set[A] =>
       subsetOf(s) && s.subsetOf(this)
@@ -100,23 +125,14 @@ class Set[A]{
 
   /** Remove e from the set; result says whether e was in the set initially
     * Post S = S_0 - {e} && returns (e in S_0) */
-  def remove(e: Int) : Boolean = {
-    var current = root
-    var previous: Node[A] = null
-    var found = false
-
-    while(current != null && !found){
-      if(current.datum == e){
-        previous.next = current.next
-        current = current.next
-        found = true
-      }
-      else {
-        previous = current
-        current = current.next
-      }
+  def remove(e: A) : Boolean = {
+    val prev = findPrev(e)
+    if(prev.next == null)
+      false
+    else {
+      prev.next = prev.next.next
+      true
     }
-    found
   }
 
   /** Test whether this is a subset of that.
@@ -126,14 +142,12 @@ class Set[A]{
   }
 
   def forAll(p: A => Boolean): Boolean = {
-    var foundFalse = false
-    // TODO breakable
-    foreach(i => foundFalse = foundFalse || !p(i))
-    !foundFalse
+    !forAny(i => !p(i))
   }
 
   def forAny(p: A => Boolean): Boolean = {
-    !forAll(i => !p(i))
+    val prev = findPrev(e => p(e))
+    prev.next != null
   }
 
   // ----- optional parts below here -----
@@ -167,7 +181,7 @@ class Set[A]{
     * Post: S = S_0 && returns res s.t. res.S = {f(x) | x <- S} */
   def map[B](f: A => B): Set[B] = {
     val result = new Set[B]()
-    foreach(e => result.unsafeAdd(f(e)))
+    foreach(e => result.add(f(e))) // do not use unsafeadd! Might map to same element
     result
   }
 
@@ -178,6 +192,9 @@ class Set[A]{
     foreach(e => if (p(e)) result.unsafeAdd(e))
     result
   }
+
+  /** The type of nodes defined in the linked list */
+  private case class Node(datum: A, var next: Node)
 }
 
 // The companion object
@@ -199,9 +216,6 @@ object Set{
 //      i
 //    }
 //  }
-
-  /** The type of nodes defined in the linked list */
-  private class Node[A](val datum: A, var next: Node[A])
 
   /** Factory method for sets.
     * This will allow us to write, for example, IntSet(3,5,1) to
