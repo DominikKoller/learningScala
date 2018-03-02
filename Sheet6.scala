@@ -99,15 +99,15 @@ object S6Q1 extends App {
   //         insertCharAt(deleteCharAt(s, i), s(i), j)
   // }
 
-  // NOTE: does not yet look for equality in characters
-
+  // Seems like creating distinct permutations is hard
+  // here are permutations that regard all characters as distinct:
   def permutationsRec(s: String): IndexedSeq[String] = {
     if(s.length <= 1)
       IndexedSeq(s)
 
     else
     for { i     <- 0 until s.length
-          perms <- permutationsRec(deleteCharAt(s, i)) }
+          perms <- permutationsRec(deleteCharAt(s, i))}
         yield
           s(i) + perms
   }
@@ -119,15 +119,17 @@ object S6Q1 extends App {
   // // Vector(AB, BA)
   // println(permutationsRec("ABC"))
   // // Vector(ABC, ACB, BAC, BCA, CAB, CBA)
-
-
   // Now actually to question 1:
-  def anagramsByPermutations(s: String, d: Dictionary): IndexedSeq[String] =
-    permutationsRec(s).filter(d.isWord).map(_.toLowerCase)
+ def anagramsByPermutations(s: String, d: Dictionary): IndexedSeq[String] =
+   permutationsRec(s).distinct.filter(d.isWord).map(_.toLowerCase)
 
-  println(anagramsByPermutations("Dog", dict))
-  // Vector(dog, god)
-  println(anagramsByPermutations("listen", dict))
-  // Vector(listen, inlets, silent, tinsel, enlist)
-  println(anagramsByPermutations("Ancestries", dict))
+ // println(anagramsByPermutations("Dog", dict))
+ // // // Vector(dog, god)
+ // println(anagramsByPermutations("listen", dict))
+ // // // Vector(listen, inlets, silent, tinsel, enlist)
+ // println(anagramsByPermutations("Ancestries", dict))
+ //  // Vector(resistance)
+
+  // This is very slow since the number of permutations of n distinct elements is
+  // O(n!)
 }
