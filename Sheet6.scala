@@ -101,34 +101,79 @@ object S6Q1 extends App {
 
   // Seems like creating distinct permutations is hard
   // here are permutations that regard all characters as distinct:
-  def permutationsRec(s: String): IndexedSeq[String] = {
+  def permutations(s: String): IndexedSeq[String] = {
     if(s.length <= 1)
       IndexedSeq(s)
 
     else
     for { i     <- 0 until s.length
-          perms <- permutationsRec(deleteCharAt(s, i))}
+          perms <- permutations(deleteCharAt(s, i))}
         yield
           s(i) + perms
   }
-  // println(permutationsRec(""))
+
+  // println(permutations(""))
   // // Vector()
-  // println(permutationsRec("A"))
+  // println(permutations("A"))
   // // Vector(A)
-  // println(permutationsRec("AB"))
+  // println(permutations("AB"))
   // // Vector(AB, BA)
-  // println(permutationsRec("ABC"))
+  // println(permutations("ABC"))
   // // Vector(ABC, ACB, BAC, BCA, CAB, CBA)
+  // println(permutations("AAB"))
+  // // Vector(AAB, ABA, AAB, ABA, BAA, BAA)
+
+  def swap(sb: StringBuilder, i: Int, j: Int): Unit = {
+    val t = sb(i)
+    sb(i) = sb(j)
+    sb(j) = t
+  }
+  // val sb = new StringBuilder("ABC")
+  // swap(sb, 0, 2)
+  // println(sb)
+  // // CBA
+
+  def distinctPermutations(s: String): List[String] = {
+    import scala.collection.mutable.ListBuffer
+    val perms = ListBuffer[String](s)
+
+    def Rec(sb: StringBuilder, n: Int): Unit = {
+      for(i <- n until sb.length){
+        if(sb(n) != sb(i)) {
+          swap(sb, n, i)
+          perms += sb.result()
+          Rec(sb, n + 1)
+          swap(sb, n, i)
+        }
+        else
+          Rec(sb, n+1)
+      }
+    }
+    Rec(new StringBuilder(s), 0)
+    perms.toList
+  }
+  // println(distinctPermutations(""))
+  // // List()
+  // println(distinctPermutations("A"))
+  // // List(A)
+  // println(distinctPermutations("AB"))
+  // // List(AB, BA)
+  // println(distinctPermutations("ABC"))
+  // // List(ABC, ACB, BAC, BCA, CBA, CAB)
+  println(distinctPermutations("AAB"))
+  // List(AAB, ABA, ABA, BAA)
+
   // Now actually to question 1:
- def anagramsByPermutations(s: String, d: Dictionary): IndexedSeq[String] =
-   permutationsRec(s).distinct.filter(d.isWord).map(_.toLowerCase)
+ def anagramsByPermutations(s: String, d: Dictionary): List[String] =
+   distinctPermutations(s.toLowerCase()).filter(d.isWord).map(_.toLowerCase)
+   //permutations(s).distinct.filter(d.isWord).map(_.toLowerCase)
 
  // println(anagramsByPermutations("Dog", dict))
- // // // Vector(dog, god)
+ // // // List(dog, god)
  // println(anagramsByPermutations("listen", dict))
- // // // Vector(listen, inlets, silent, tinsel, enlist)
+ // // // List(listen, inlets, silent, tinsel, enlist)
  // println(anagramsByPermutations("Ancestries", dict))
- //  // Vector(resistance)
+ //  // List(resistance)
 
   // This is very slow since the number of permutations of n distinct elements is
   // O(n!)
