@@ -2,6 +2,7 @@ import org.scalatest._
 import java.io.File
 
 import scala.annotation.tailrec
+import scala.collection.mutable
 //import scala.collection.mutable.ListBuffer
 // built.sbt adds scalatest for specific files only
 
@@ -18,13 +19,11 @@ class Dictionary(fname: String){
   private val words = new scala.collection.mutable.HashSet[String]
 
   /** Initialise dictionary from fname */
-  // NOT CASE SENSITIV!
   private def initDict(fname: String): Unit = {
-    println(new File(".").getAbsolutePath())
     val allWords = scala.io.Source.fromFile(fname).getLines
     // Should word w be included?
     def include(w:String) = w.forall(_.isLower)
-    for(w <- allWords; if include(w)) words += w.toLowerCase
+    for(w <- allWords; if include(w)) words += w
     // println("Found "+words.size+" words")
   }
 
@@ -133,25 +132,27 @@ object S6Q1 extends App {
   // println(sb)
   // // CBA
 
-  def distinctPermutations(s: String): List[String] = {
-    import scala.collection.mutable.ListBuffer
-    val perms = ListBuffer[String](s)
-
-    def Rec(sb: StringBuilder, n: Int): Unit = {
-      for(i <- n until sb.length){
-        if(sb(n) != sb(i)) {
-          swap(sb, n, i)
-          perms += sb.result()
-          Rec(sb, n + 1)
-          swap(sb, n, i)
-        }
-        else
-          Rec(sb, n+1)
-      }
-    }
-    Rec(new StringBuilder(s), 0)
-    perms.toList
-  }
+  // // THIS DOES NOT WORK
+  // def distinctPermutations(s: String): List[String] = {
+  //   import scala.collection.mutable.ListBuffer
+  //   val perms = ListBuffer[String](s)
+//
+  //   def Rec(sb: StringBuilder, n: Int): Unit = {
+  //     for(i <- n+1 until sb.length){
+  //       if(sb(n) != sb(i)) {
+  //         swap(sb, n, i)
+  //         perms += sb.result()
+  //         Rec(sb, n + 1)
+  //         swap(sb, n, i)
+  //       }
+  //     }
+  //     if(n+1 < sb.length)
+  //       Rec(sb, n+1)
+  //   }
+//
+  //   Rec(new StringBuilder(s), 0)
+  //   perms.toList
+  // }
   // println(distinctPermutations(""))
   // // List()
   // println(distinctPermutations("A"))
@@ -159,22 +160,71 @@ object S6Q1 extends App {
   // println(distinctPermutations("AB"))
   // // List(AB, BA)
   // println(distinctPermutations("ABC"))
-  // // List(ABC, ACB, BAC, BCA, CBA, CAB)
-  println(distinctPermutations("AAB"))
-  // List(AAB, ABA, ABA, BAA)
+  // // List(ABC, BAC, BCA, CBA, CAB, ACB)
+  // println(distinctPermutations("AAB"))
+  // // List(AAB, BAA, ABA)
+  // println(distinctPermutations("ABB"))
+  // List(ABB, BAB, BBA, BBA, BAB)
 
   // Now actually to question 1:
- def anagramsByPermutations(s: String, d: Dictionary): List[String] =
-   distinctPermutations(s.toLowerCase()).filter(d.isWord).map(_.toLowerCase)
-   //permutations(s).distinct.filter(d.isWord).map(_.toLowerCase)
+ def anagramsByPermutations(s: String, d: Dictionary): IndexedSeq[String] =
+   permutations(s).distinct.filter(d.isWord).map(_.toLowerCase)
+ // distinctPermutations(s.toLowerCase()).filter(d.isWord).map(_.toLowerCase)
 
  // println(anagramsByPermutations("Dog", dict))
- // // // List(dog, god)
+ // // // Vector(dog, god)
  // println(anagramsByPermutations("listen", dict))
- // // // List(listen, inlets, silent, tinsel, enlist)
+ // // // Vector(listen, inlets, silent, tinsel, enlist)
  // println(anagramsByPermutations("Ancestries", dict))
- //  // List(resistance)
+ //  // Vector(resistance)
 
   // This is very slow since the number of permutations of n distinct elements is
   // O(n!)
+
+  //Q1 b)
+
+  // I am solving this differently than suggested,
+  // using a HashMap with MultiMap instead of a sorted list
+  // this is so much more convenient
+  class AnagrammaticalDictionary(fname: String) {
+    /** A Set object holding the words */
+
+    private val words = new mutable.HashMap[String, mutable.Set[String]] with mutable.MultiMap[String, String]
+
+    /** Initialise dictionary from fname */
+    private def initDict(fname: String): Unit = {
+      val allWords = scala.io.Source.fromFile(fname).getLines
+
+      for (w <- allWords; if w.forall(_.isLower))
+        words.addBinding(w.sorted, w)
+    }
+
+    override def toString: String = words.mkString
+
+    // Initialise the dictionary
+    initDict(fname)
+
+    /** test if w is in the dictionary */
+    def anagramsOf(w: String): mutable.Set[String] =
+      words.getOrElse(w.toLowerCase.sorted, mutable.Set[String]())
+  }
+
+  def anagrams(s: String, d: AnagrammaticalDictionary): mutable.Set[String] = d.anagramsOf(s)
+
+  val anaDict = new AnagrammaticalDictionary("knuth_words.txt")
+  // println(anagrams("dog", anaDict))
+  // // // Set(god, dog)
+  // println(anagrams("listen", anaDict))
+  // // // Set(inlets, enlist, listen, tinsel, silent)
+  // println(anagrams("Ancestries", anaDict))
+  // // Set(resistance)
+  // println(anagrams("bacterial", anaDict))
+  // // Set(calibrate, bacterial)
+
+  // Q2
+  // oh, sorry
+
+  // Q3
+
+
 }
