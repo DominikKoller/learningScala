@@ -201,7 +201,197 @@ sys	0m0.070s
     println(word(0)(n)(2))
   }
 
-  // Bracketing values for BACB
+
+
+
+
+	// ---------- Extra, Lazy:
+
+	class Lazy[T] (val gen: () => T) {
+		private var value: Option[T] = None
+		var got = false
+		def get:T = {
+			if(value.isEmpty)
+				value = Some(gen())
+			value.get
+		}
+	}
+
+	class LazyArray[T] (val length: Int) {
+		private val values = new Array[Lazy[T]](length)
+
+		def set(i: Int, v: T): Unit = values(i) = new Lazy(() => v)
+		def set(i: Int, gen: () => T): Unit = values(i) = new Lazy(gen)
+		def get(i: Int): T = values(i).get
+
+		def fill(gen: Int => T): Unit = {
+			for(i <- 0 until length)
+				values(i) = new Lazy(() => gen(i))
+		}
+		def fill(gen: () => T): Unit = fill(_=> gen())
+		def fill(value: T): Unit = fill(_ => value)
+
+		def foreach(f: T => Unit): Unit = {
+			values.foreach(l => f(l.get))
+		}
+		// Chains Lazy values to old array. Not sure if good design choice.
+		// Also: chaining of lazy values still has to be done explicitly
+		def map[T2](f: T => T2): LazyArray[T2] = {
+			val a = new LazyArray[T2](length)
+			for(i <- 0 until length)
+				a.set(i, () => f(values(i).get))
+			a
+		}
+	}
+
+	object LazyArray {
+		def fill[T](size: Int, gen: () => T): LazyArray[T] = fill(size, _=> gen())
+		def fill[T](size: Int, value: T): LazyArray[T] = fill(size, _ => value)
+		def fill[T](size: Int, gen: Int => T): LazyArray[T] = {
+			val a = new LazyArray[T](size)
+			a.fill(gen)
+			a
+		}
+	}
+
+	class LazyArray2[T](val size: (Int, Int)) {
+		//import scala.math.Integral.Implicits._
+
+		val values = new LazyArray[T](size._1 * size._2)
+
+		def get(x: Int, y: Int): T = values.get(to1D(x, y))
+		def set(x: Int, y: Int, v: T): Unit = {
+			values.set(to1D(x, y), () => v)
+		}
+		def set(x: Int, y: Int, gen: () => T): Unit =
+			values.set(to1D(x, y), gen)
+
+		def fill(gen: (Int, Int) => T): Unit = {
+			for{x <- 0 until size._1
+					y <- 0 until size._2}
+				values.set(to1D(x, y), () => gen(x,y))
+		}
+
+		// TODO analoues of
+		// def fill(gen: () => T): Unit = fill(_=> gen())
+		// def fill(value: T): Unit = fill(_ => value)
+
+		// TODO foreach
+
+		//private def to2D(i: Int) = i /% size._1
+		private def to1D(x: Int, y: Int) = x * size._1 + y
+
+		// TODO map
+	}
+
+	// TODO object LazyArray2
+
+	class LazyArray3[T](val size: (Int, Int, Int)) {
+		//import scala.math.Integral.Implicits._
+
+		val values = new LazyArray[T](size._1 * size._2 * size._3)
+		def get(x: Int, y: Int, z: Int): T = values.get(to1D(x, y, z))
+		def set(x: Int, y: Int, z: Int, v: T): Unit =
+			values.set(to1D(x, y, z), () => v)
+		def set(x: Int, y: Int, z:Int, gen: () => T): Unit =
+			values.set(to1D(x, y, z), gen)
+
+		def fill(gen: (Int, Int, Int) => T): Unit = {
+			for{x <- 0 until size._1
+					y <- 0 until size._2
+					z <- 0 until size._3}
+				values.set(to1D(x, y, z), () => gen(x, y, z))
+		}
+
+		// TODO analoues of
+		// def fill(gen: () => T): Unit = fill(_=> gen())
+		// def fill(value: T): Unit = fill(_ => value)
+
+		// TODO foreach
+
+		private def to1D(x: Int, y: Int, z: Int) = x*size._1*size._2 + y*size._2 + z
+
+		// TODO map
+	}
+
+	object LazyArray3 {
+		def fill[T](size: (Int, Int, Int), gen: () => T): LazyArray3[T] = fill(size, (_,_,_) => gen())
+		def fill[T](size: (Int, Int, Int), value: T): LazyArray3[T] = fill(size, (_,_,_) => value)
+		def fill[T](size: (Int, Int, Int), gen: (Int, Int, Int) => T): LazyArray3[T] = {
+			val a = new LazyArray3[T](size)
+			a.fill(gen)
+			a
+		}
+	}
+
+	//class LazyArray3[T](val values: Array[Array[LazyArray[T]]]) {
+	//	def get(x: Int, y: Int, z: Int): T = values(x)(y).get(z)
+	//}
+	//object LazyArray2 {
+	//	import scala.math.Integral.Implicits._
+//
+	//	def fill[T](size: (Int, Int), gen: (Int, Int) => T): LazyArray2[T] = {
+	//		val as = new Array[LazyArray[T]](size._1)
+	//		for(y <- as.length)
+	//			as(y) = LazyArray.fill[T](size._2, gen(_,y))
+	//		new LazyArray2(as)
+	//	}
+	//}
+	//object LazyArray3 {
+	//	def fill[T](size: (Int, Int, Int), gen: (Int, Int, Int) => T): LazyArray2[T] = {
+	//		//val as = new Array[Array[LazyArray[T]]](size._3)
+	//		val as = Array.ofDim[LazyArray[T]](size._2, size._3)
+	//		for{y <- as.length
+	//				z <- as(0).length}
+	//			as(i) = LazyArray.fill[T](size._1, gen(i,_))
+	//		new LazyArray2(as)
+	//	}
+	//}
+
+	/*
+	def initilizeWaysLazy(w: Array[Int]) = {
+		for{i <- 0 to waysLazy.length
+				j <- i+1 to waysLazy(0).length
+				z <- 0 to waysLazy(0)(0).length}{
+				waysLazy(i) = new Lazy[Int](
+				() => {
+
+				}
+			)
+		}
+	}
+	*/
+
+	var waysLazy = new LazyArray3[Int](MAXWORD, MAXWORD, 3)
+	
+	def NumberMemoize(w: Array[Int], n: Int): Unit = {
+		waysLazy.fill((i, j, z) => {
+
+			assert(i < j)
+			if(i+1 == j) {
+				if (w(i) == z)
+					1
+				else
+					0
+			}
+			else {
+				var counter = 0
+				for {x <- 0 to 2
+						 y <- 0 to 2
+						 if op(x)(y) == z
+						 k <- i + 1 to j - 1}
+					counter += waysLazy.get(i, k, x) * waysLazy.get(k, j, y)
+				counter
+			}
+		})
+
+		waysLazy.get(0, n, 0)
+		waysLazy.get(0, n, 1)
+		waysLazy.get(0, n, 2)
+	}
+
+
+	// Bracketing values for BACB
   // A cannot be achieved
   //   B can be achieved 1 way
   //   For example:
