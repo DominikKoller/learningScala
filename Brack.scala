@@ -134,6 +134,7 @@ sys	0m0.070s
       print_tree(t2)
       print(")")
     }
+    case _ => "Tried to print null Tree"
   }
 
 	//These arrays should hold the relevant data for dynamic programming
@@ -144,9 +145,6 @@ sys	0m0.070s
 
 
 	//Task 4, 5, and 7(optional)
-	//TODO Fill out arrays with dynamic programming solution
-	
-	println("start")
 
   def TabulatePoss(w: Array[Int], n: Int): Unit = {
     for {i <- 0 until n
@@ -191,6 +189,7 @@ sys	0m0.070s
       }
     }
 
+    /*
     for(x<-word; y<-x; z<-y)
       println(z)
     println("A can be achieved:")
@@ -199,10 +198,8 @@ sys	0m0.070s
     println(word(0)(n)(1))
     println("C can be achieved like:")
     println(word(0)(n)(2))
+    */
   }
-
-
-
 
 
 	// ---------- Extra, Lazy:
@@ -217,155 +214,70 @@ sys	0m0.070s
 		}
 	}
 
-	class LazyArray[T] (val length: Int) {
-		private val values = new Array[Lazy[T]](length)
+	class LazyArray[T: Manifest] (val length: Int, val gen: Int=> T) {
+		private val values: Array[T] = new Array[T](length)
 
-		def set(i: Int, v: T): Unit = values(i) = new Lazy(() => v)
-		def set(i: Int, gen: () => T): Unit = values(i) = new Lazy(gen)
-		def get(i: Int): T = values(i).get
-
-		def fill(gen: Int => T): Unit = {
-			for(i <- 0 until length)
-				values(i) = new Lazy(() => gen(i))
+		def get(i: Int): T = {
+			if(values(i) == null)
+				values(i) = gen(i)
+			values(i)
 		}
-		def fill(gen: () => T): Unit = fill(_=> gen())
-		def fill(value: T): Unit = fill(_ => value)
 
 		def foreach(f: T => Unit): Unit = {
-			values.foreach(l => f(l.get))
-		}
-		// Chains Lazy values to old array. Not sure if good design choice.
-		// Also: chaining of lazy values still has to be done explicitly
-		def map[T2](f: T => T2): LazyArray[T2] = {
-			val a = new LazyArray[T2](length)
 			for(i <- 0 until length)
-				a.set(i, () => f(values(i).get))
-			a
+				f(get(i))
 		}
+
+		def map[T2: Manifest](f: T => T2): LazyArray[T2] =
+			new LazyArray[T2](length, i => f(gen(i)))
 	}
 
-	object LazyArray {
-		def fill[T](size: Int, gen: () => T): LazyArray[T] = fill(size, _=> gen())
-		def fill[T](size: Int, value: T): LazyArray[T] = fill(size, _ => value)
-		def fill[T](size: Int, gen: Int => T): LazyArray[T] = {
-			val a = new LazyArray[T](size)
-			a.fill(gen)
-			a
+	class LazyArray2[T: Manifest](val size: (Int, Int), val gen: (Int, Int) => T) {
+
+    val values:Array[Array[Option[T]]] = Array.tabulate[Option[T]](size._1, size._2)((_,_) => None)
+
+		def get(x: Int)(y: Int): T = {
+			if(values(x)(y).isEmpty)
+				values(x)(y) = Some(gen(x, y))
+			values(x)(y).get
 		}
+
+		def foreach(f: T => Unit): Unit = {
+      for {x <- 0 until size._1
+           y <- 0 until size._2}
+        f(get(x)(y))
+    }
+
+			def map[T2: Manifest](f: T => T2): LazyArray2[T2] =
+				new LazyArray2[T2](size, (x, y) => f(gen(x, y)))
 	}
 
-	class LazyArray2[T](val size: (Int, Int)) {
-		//import scala.math.Integral.Implicits._
+	class LazyArray3[T: Manifest](val size: (Int, Int, Int), val gen: (Int, Int, Int) => T) {
 
-		val values = new LazyArray[T](size._1 * size._2)
+		// val values:Array[Array[Array[Option[T]]]] = Array.ofDim[Option[T]](size._1, size._2, size._3)
+    val values:Array[Array[Array[Option[T]]]] = Array.tabulate[Option[T]](size._1, size._2, size._3)((_,_,_) => None)
 
-		def get(x: Int, y: Int): T = values.get(to1D(x, y))
-		def set(x: Int, y: Int, v: T): Unit = {
-			values.set(to1D(x, y), () => v)
-		}
-		def set(x: Int, y: Int, gen: () => T): Unit =
-			values.set(to1D(x, y), gen)
-
-		def fill(gen: (Int, Int) => T): Unit = {
-			for{x <- 0 until size._1
-					y <- 0 until size._2}
-				values.set(to1D(x, y), () => gen(x,y))
+		def get(x: Int)(y: Int)(z: Int): T = {
+			if(values(x)(y)(z).isEmpty)
+				values(x)(y)(z) = Some(gen(x, y, z))
+			values(x)(y)(z).get
 		}
 
-		// TODO analoues of
-		// def fill(gen: () => T): Unit = fill(_=> gen())
-		// def fill(value: T): Unit = fill(_ => value)
+		def foreach(f: T => Unit): Unit = {
+      for {x <- 0 until size._1
+           y <- 0 until size._2
+           z <- 0 until size._3}
+        f(get(x)(y)(z))
+    }
 
-		// TODO foreach
-
-		//private def to2D(i: Int) = i /% size._1
-		private def to1D(x: Int, y: Int) = x * size._1 + y
-
-		// TODO map
+			def map[T2: Manifest](f: T => T2): LazyArray3[T2] =
+				new LazyArray3[T2](size, (x, y, z) => f(gen(x,y,z)))
 	}
 
-	// TODO object LazyArray2
+	var waysLazy: LazyArray3[Int] = _
 
-	class LazyArray3[T](val size: (Int, Int, Int)) {
-		//import scala.math.Integral.Implicits._
-
-		val values = new LazyArray[T](size._1 * size._2 * size._3)
-		def get(x: Int, y: Int, z: Int): T = values.get(to1D(x, y, z))
-		def set(x: Int, y: Int, z: Int, v: T): Unit =
-			values.set(to1D(x, y, z), () => v)
-		def set(x: Int, y: Int, z:Int, gen: () => T): Unit =
-			values.set(to1D(x, y, z), gen)
-
-		def fill(gen: (Int, Int, Int) => T): Unit = {
-			for{x <- 0 until size._1
-					y <- 0 until size._2
-					z <- 0 until size._3}
-				values.set(to1D(x, y, z), () => gen(x, y, z))
-		}
-
-		// TODO analoues of
-		// def fill(gen: () => T): Unit = fill(_=> gen())
-		// def fill(value: T): Unit = fill(_ => value)
-
-		// TODO foreach
-
-		private def to1D(x: Int, y: Int, z: Int) = x*size._1*size._2 + y*size._2 + z
-
-		// TODO map
-	}
-
-	object LazyArray3 {
-		def fill[T](size: (Int, Int, Int), gen: () => T): LazyArray3[T] = fill(size, (_,_,_) => gen())
-		def fill[T](size: (Int, Int, Int), value: T): LazyArray3[T] = fill(size, (_,_,_) => value)
-		def fill[T](size: (Int, Int, Int), gen: (Int, Int, Int) => T): LazyArray3[T] = {
-			val a = new LazyArray3[T](size)
-			a.fill(gen)
-			a
-		}
-	}
-
-	//class LazyArray3[T](val values: Array[Array[LazyArray[T]]]) {
-	//	def get(x: Int, y: Int, z: Int): T = values(x)(y).get(z)
-	//}
-	//object LazyArray2 {
-	//	import scala.math.Integral.Implicits._
-//
-	//	def fill[T](size: (Int, Int), gen: (Int, Int) => T): LazyArray2[T] = {
-	//		val as = new Array[LazyArray[T]](size._1)
-	//		for(y <- as.length)
-	//			as(y) = LazyArray.fill[T](size._2, gen(_,y))
-	//		new LazyArray2(as)
-	//	}
-	//}
-	//object LazyArray3 {
-	//	def fill[T](size: (Int, Int, Int), gen: (Int, Int, Int) => T): LazyArray2[T] = {
-	//		//val as = new Array[Array[LazyArray[T]]](size._3)
-	//		val as = Array.ofDim[LazyArray[T]](size._2, size._3)
-	//		for{y <- as.length
-	//				z <- as(0).length}
-	//			as(i) = LazyArray.fill[T](size._1, gen(i,_))
-	//		new LazyArray2(as)
-	//	}
-	//}
-
-	/*
-	def initilizeWaysLazy(w: Array[Int]) = {
-		for{i <- 0 to waysLazy.length
-				j <- i+1 to waysLazy(0).length
-				z <- 0 to waysLazy(0)(0).length}{
-				waysLazy(i) = new Lazy[Int](
-				() => {
-
-				}
-			)
-		}
-	}
-	*/
-
-	var waysLazy = new LazyArray3[Int](MAXWORD, MAXWORD, 3)
-	
-	def NumberMemoize(w: Array[Int], n: Int): Unit = {
-		waysLazy.fill((i, j, z) => {
+	def Memoize(w: Array[Int], n: Int): Unit = {
+		waysLazy = new LazyArray3[Int]((MAXWORD, MAXWORD, 3), (i, j, z) => {
 
 			assert(i < j)
 			if(i+1 == j) {
@@ -380,14 +292,10 @@ sys	0m0.070s
 						 y <- 0 to 2
 						 if op(x)(y) == z
 						 k <- i + 1 to j - 1}
-					counter += waysLazy.get(i, k, x) * waysLazy.get(k, j, y)
+					counter += waysLazy.get(i)(k)(x) * waysLazy.get(k)(j)(y)
 				counter
 			}
 		})
-
-		waysLazy.get(0, n, 0)
-		waysLazy.get(0, n, 1)
-		waysLazy.get(0, n, 2)
 	}
 
 
@@ -426,11 +334,12 @@ sys	0m0.070s
   def main(args: Array[String]) = {
 
     // string to print if error occurs
-    val errString = 
+    val errString =
       "Usage: scala Brack -PossibleRec [file]\n"+
       "     | scala Brack -NumberRec [file]\n"+
-      "     | scala Brack -Tabulate [file]\n"
-		
+      "     | scala Brack -Tabulate [file]\n"+
+      "     | scala Brack -Memoize [file]\n"
+
 		if (args.length > 2){
 			println(errString)
 			sys.exit
@@ -438,7 +347,7 @@ sys	0m0.070s
 
     //Get the plaintext, either from the file whose name appears in position
     //pos, or from standard input
-    def getPlain(pos: Int) = 
+    def getPlain(pos: Int) =
       if(args.length==pos+1) readFile(args(pos)) else StdIn.readLine.toArray
 
     // Check there are at least n arguments
@@ -460,7 +369,7 @@ sys	0m0.070s
 				plainInt(i) = LetterToInt(plain(i))
 			}
 		}
-		
+
 		//Executing appropriate command
     if(command=="-PossibleRec"){
 		println("Bracketing values for "+ plain.mkString(""))
@@ -508,7 +417,31 @@ sys	0m0.070s
 				printf("\n")
 			}
 		}
-    }      
+    }
+
+    else if(command=="-Memoize"){
+      Memoize(plainInt,len)
+      println("Bracketing values for "+ plain.mkString(""))
+      for(v<-0 to 2){
+        var z: Int = waysLazy.get(0)(len)(v)
+        if(z==0){
+          println(('A'.toInt + v).toChar+ " cannot be achieved")
+        }
+        else if(z==1){
+          printf(('A'.toInt + v).toChar+ " can be achieved %d way\n", z)
+          printf("For example:")
+          print_tree(exp(0)(len)(v))
+          printf("\n")
+        }
+        else if (z > 1){
+          printf(('A'.toInt + v).toChar+ " can be achieved %d ways\n", z)
+          printf("For example:")
+          print_tree(exp(0)(len)(v))
+          printf("\n")
+        }
+      }
+    }
+
     else println(errString)
   }
 }
